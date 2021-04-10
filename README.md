@@ -1,13 +1,17 @@
-Parapipe - paralleling pipeline (UNDER DEVELOPMENT)
+Parapipe - paralleling pipeline
 ===============================
 
 The library provides a buffered pipeline for structuring the code and vertically scaling your app. The main difference
 from a regular pipeline example you may find on the internet - pipeline executes everything on each step concurrently,
 yet maintaining the order. Although, this library does not use any locks or mutexes, or any other thread synchronization
-tools. Just channels and nothing more.
+tools. Just channels and goroutines.
 
 When to use
 -----------
+
+* processed data can be divided in chunks (messages) and the flow may consist of one or more stages
+* data should be processed concurrently (scaled vertically)
+* the order of processing messages must be maintained
 
 Installation
 ------------
@@ -19,60 +23,103 @@ go get github.com/nazar256/parapipe
 Usage
 -----
 
-It's best shown in examples.
-Every box executed in each pipe in parallel.
+1. Create a pipeline
+
+```go
+concurrencyFactor := 5 // how many callbacks can be executed concurrently for each pipe
+pipeline := parapipe.NewPipeline(concurrencyFactor)
+```
+
+2. Add pipes - call `Pipe()` method one or more times
+```go
+pipeline.Pipe(func(msg interface{}) interface{} {
+    typedMsg := msg.(YourInputType)     // cast message to your type
+    // do something and generate a new value "someValue"
+    return someValue
+})
+   ```
+3. Get "out" channel when all pipes are added and read results from it
+```go
+for result := range pipeline.Out() {
+    // do something with the result, yout may have to type cast it
+}
+```
+4. Close pipeline with closing it's input channel. All internal channels, goroutines, including `Out()` channel will be
+   closed in a cascade.
+```go
+close(pipeline.In())
+```   
+
+### Limitations
+
+* `Out()` method can be used only once on each pipeline. Any subsequent `Pipe()` call will cause panic. Though, when you
+  need to stream values somewhere from the middle of the pipeline - just send them to your own channel.
+* while in the time of writing Go does not have generics, you have to cast incoming messages in pipes explicitly.
+
+It's best shown in examples. Every box executed in each pipe in parallel.
+
+Examples
+--------
 
 ### AMQP middleware
 
-```go
-	repliesCh, err = amqpChannel.Consume(
-		q.Name,            // queue
-		"go-amqp-example", // consumer
-		true,              // auto-ack
-		false,             // exclusive
-		false,             // no-local
-		false,             // no-wait
-		nil,               // args
-	)
+Parapipe can be handful when you need to process messagess in the middle concurrently, yet maintaining their order.
 
-	bufferSize := 4
-	pipeline := parapipe.
-		NewPipeline(repliesCh, bufferSize).
-		// parse
-		Pipe(func(box parapipe.Box) parapipe.Box {
-			msg := box.Contents
-			event := &Event{}
-			_ = json.Unmarshal(msg.(amqp.Delivery).Body, event)
-			return parapipe.Box{event}
-		}).
-		// validate
-		Pipe(func(box parapipe.Box) parapipe.Box {
-			event := box.Contents.(Event)
-			// ...
-			return parapipe.Box{event}
-		}).
-		// modify
-		Pipe(func(box parapipe.Box) parapipe.Box {
-			event := box.Contents.(Event)
-			// ...
-            payload, _ := json.Marshal(event)
-			return parapipe.Box{payload}
-		}).
-		// publish as new event
-		Pipe(func(box parapipe.Box) parapipe.Box {
-			payload, _ := box.Contents.([]byte)
-		    err = amqpChannel.Publish(
-			"some-exchange",
-			"some:routing:key",
-			false,
-			false,
-			amqp.Publishing{
-				ContentType: "application/json",
-				Body:        payload,
-			})
-			// validate message
-			return parapipe.Box{nil}
-		})
+```go
+replies, err = amqpChannel.Consume(
+    q.Name,            // queue
+    "go-amqp-example", // consumer
+    true,              // auto-ack
+    false,             // exclusive
+    false,             // no-local
+    false,             // no-wait
+    nil,               // args
+)
+
+concurrency := 4
+pipeSource := interface{}(replies).(<-chan interface{})
+pipeline := parapipe.NewPipeline(concurrency)
+
+go func() {
+    for amqpMsg := range replies {
+        pipeline.In() <- amqpMsg
+    }
+    close(pipeline.In())
+}()
+
+// here pipeline starts to process messages immediately (once they are sent above) even before "Out()" is called
+pipeline.
+    Pipe(func(msg interface{}) interface{} {
+        event := &Event{}
+        _ = json.Unmarshal(msg.(amqp.Delivery).Body, event)
+        return event
+    }).
+    Pipe(func(msg interface{}) interface{} {
+        event := msg.(Event)
+        // validate the event
+        return event
+    }).
+    Pipe(func(msg interface{}) interface{} {
+        payload, _ := json.Marshal(msg.(Event))
+        // publish as new event
+        err = amqpChannel.Publish(
+        "some-exchange",
+        "some:routing:key",
+        false,
+        false,
+        amqp.Publishing{
+            ContentType: "application/json",
+            Body:        payload,
+        })
+        return nil
+    })
 ```
 
-### Streamed feed response
+### Other examples
+
+With parapipe you can:
+
+  * respond a JSON-feed as stream, retrieve, enrich and marshal each object concurrently, in maintained order 
+and return them to the client
+  * fetch and merge entries from different sources as one stream
+  * structure your HTTP-controllers

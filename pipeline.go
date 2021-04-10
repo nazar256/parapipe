@@ -1,69 +1,53 @@
 package parapipe
 
+// Pipeline executes jobs concurrently maintaining message order
 type Pipeline struct {
-	source <-chan interface{}
-	pipes  []*pipe
-	buffer int
+	pipes       []*pipe
+	concurrency int
+	finalized   bool
 }
 
-func NewPipeline(source <-chan interface{}, buffer int) *Pipeline {
+// NewPipeline creates new Pipeline instance, "concurrency" sets how many jobs can be executed concurrently in each pipe
+func NewPipeline(concurrency int) *Pipeline {
 	return &Pipeline{
-		source: source,
-		pipes:  make([]*pipe, 0),
-		buffer: buffer,
+		pipes:       make([]*pipe, 0, 1),
+		concurrency: concurrency,
 	}
 }
 
-func (p Pipeline) Pipe(job func(box Box) Box) Pipeline {
-	pipe := newPipe(job, p.buffer)
+// In returns input channel of the pipeline - the entrance of the pipeline, send there your input values
+func (p *Pipeline) In() chan<- interface{} {
+	return p.pipes[0].in
+}
+
+// Pipe adds new pipe to pipeline with the callback for processing each message
+func (p *Pipeline) Pipe(job Job) *Pipeline {
+	if p.finalized {
+		panic("attempt to create new pipeline after Out() call")
+	}
+
+	pipe := newPipe(job, p.concurrency)
+
+	if len(p.pipes) > 0 {
+		bindChannels(p.pipes[len(p.pipes)-1].out, pipe.in)
+	}
 
 	p.pipes = append(p.pipes, pipe)
-
-	var source <-chan Box
-	switch len(p.pipes) {
-	case 0:
-		source = packCh(p.source)
-	default:
-		source = p.pipes[len(p.pipes)-1].out
-	}
-
-	go func() {
-		for box := range source {
-			pipe.in <- box
-		}
-	}()
 
 	return p
 }
 
-func (p Pipeline) Out() <-chan interface{} {
-	return unPackCh(p.pipes[len(p.pipes)-1].out)
+// Out returns exit of the pipeline - channel with results of the last pipe
+func (p *Pipeline) Out() <-chan interface{} {
+	p.finalized = true
+	return p.pipes[len(p.pipes)-1].out
 }
 
-func (p Pipeline) Close() {
-	for _, pipe := range p.pipes {
-		pipe.close()
-	}
-}
-
-func packCh(inCh <-chan interface{}) chan Box {
-	outCh := make(chan Box, cap(inCh))
-	go func() {
-		for msg := range inCh {
-			outCh <- Box{msg}
+func bindChannels(from <-chan interface{}, to chan<- interface{}) {
+	go func(from <-chan interface{}, to chan<- interface{}) {
+		for msg := range from {
+			to <- msg
 		}
-		close(outCh)
-	}()
-	return outCh
-}
-
-func unPackCh(inCh chan Box) chan interface{} {
-	outCh := make(chan interface{}, cap(inCh))
-	go func() {
-		for box := range inCh {
-			outCh <- box.Contents
-		}
-		close(outCh)
-	}()
-	return outCh
+		close(to)
+	}(from, to)
 }

@@ -1,43 +1,34 @@
 package parapipe
 
-type Box struct {
-	Contents interface{}
-}
-
 type pipe struct {
-	in      chan Box
-	out     chan Box
-	job     func(inBox Box) Box
-	queue   chan chan Box
-	closeCh chan struct{}
+	in  chan interface{}
+	out chan interface{}
+
+	queue     chan chan interface{}
+	closeInCh chan struct{}
 }
 
-func newPipe(job func(inBox Box) Box, buffer int) *pipe {
-	p := &pipe{
-		in:  make(chan Box, buffer),
-		out: make(chan Box, buffer),
-		job: job,
+// Job is the short callback signature, used in pipes
+type Job func(msg interface{}) interface{}
 
-		queue:   make(chan chan Box, buffer),
-		closeCh: make(chan struct{}),
+func newPipe(job Job, concurrency int) *pipe {
+	p := &pipe{
+		in:  make(chan interface{}),
+		out: make(chan interface{}),
+
+		queue:     make(chan chan interface{}, concurrency),
+		closeInCh: make(chan struct{}),
 	}
 
 	go func() {
-		<-p.closeCh
-		close(p.in)
-		close(p.queue)
-		close(p.out)
-		return
-	}()
-
-	go func() {
-		for box := range p.in {
-			queued := make(chan Box, 1)
-			go func(box Box) {
-				queued <- p.job(box)
-			}(box)
+		for msg := range p.in {
+			queued := make(chan interface{}, 1)
+			go func(job Job, msg interface{}, queued chan interface{}) {
+				queued <- job(msg)
+			}(job, msg, queued)
 			p.queue <- queued
 		}
+		close(p.queue)
 	}()
 
 	go func() {
@@ -45,11 +36,9 @@ func newPipe(job func(inBox Box) Box, buffer int) *pipe {
 			p.out <- <-processed
 			close(processed)
 		}
+
+		close(p.out)
 	}()
 
 	return p
-}
-
-func (p pipe) close() {
-	p.closeCh <- struct{}{}
 }
