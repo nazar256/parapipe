@@ -1,9 +1,8 @@
 package parapipe
 
 type pipe struct {
-	in    chan interface{}
-	out   chan interface{}
-	errCh chan error
+	in  chan interface{}
+	out chan interface{}
 
 	queue     chan chan interface{}
 	closeInCh chan struct{}

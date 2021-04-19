@@ -41,6 +41,7 @@ pipeline.Pipe(func(msg interface{}) interface{} {
 3. Get "out" channel when all pipes are added and read results from it
 ```go
 for result := range pipeline.Out() {
+    typedResut := result.(YourResultType)
     // do something with the result
 }
 ```
@@ -49,6 +50,19 @@ for result := range pipeline.Out() {
 ```go
 close(pipeline.In())
 ```   
+
+5. To handle errors just return them as a result then listen to them on Out
+```go
+for result := range pipeline.Out() {
+    err := result.(error)
+    if err != nil {
+        // handle the error
+        // you may want to stop sending new values to the pipeline in your own way and do close(pipeline.In())
+    }   
+    typedResut := result.(YourResultType)
+    // do something with the result
+}
+```
 
 ### Limitations
 
