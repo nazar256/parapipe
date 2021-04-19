@@ -19,7 +19,7 @@ func TestPipelineExecutesPipesInDefinedOrder(t *testing.T) {
 			return "#" + str
 		})
 
-	genMessages(pipeline.In(), 100)
+	genIntMessages(pipeline.In(), 100)
 
 	i := 0
 	for actualResult := range pipeline.Out() {
@@ -50,7 +50,7 @@ func TestPipelineExecutesConcurrently(t *testing.T) {
 		})
 
 	start := time.Now()
-	genMessages(pipeline.In(), inputValuesCount)
+	genIntMessages(pipeline.In(), inputValuesCount)
 
 	// wait for all results
 	for range pipeline.Out() {
@@ -62,5 +62,40 @@ func TestPipelineExecutesConcurrently(t *testing.T) {
 			"Expected to be executed concurrently in 100ms, actual duration was %dms",
 			duration/time.Millisecond,
 		)
+	}
+}
+
+func Benchmark1Pipe1Message(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		concurrency := 1
+		pipeline := NewPipeline(concurrency).Pipe(func(msg interface{}) interface{} { return msg })
+		genSmallestMessages(pipeline.In(), 1)
+		for range pipeline.Out() {
+		}
+	}
+}
+
+func Benchmark5Pipes1Message(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		concurrency := 1
+		pipeline := NewPipeline(concurrency).
+			Pipe(func(msg interface{}) interface{} { return msg }).
+			Pipe(func(msg interface{}) interface{} { return msg }).
+			Pipe(func(msg interface{}) interface{} { return msg }).
+			Pipe(func(msg interface{}) interface{} { return msg }).
+			Pipe(func(msg interface{}) interface{} { return msg })
+		genSmallestMessages(pipeline.In(), 1)
+		for range pipeline.Out() {
+		}
+	}
+}
+
+func Benchmark1Pipe10000Messages(b *testing.B) {
+	concurrency := 16
+	for n := 0; n < b.N; n++ {
+		pipeline := NewPipeline(concurrency).Pipe(func(msg interface{}) interface{} { return msg })
+		genSmallestMessages(pipeline.In(), 10000)
+		for range pipeline.Out() {
+		}
 	}
 }

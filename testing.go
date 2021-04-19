@@ -8,10 +8,20 @@ func makeRange(min, max int) []int {
 	return a
 }
 
-func genMessages(dst chan<- interface{}, amount int) {
+func genIntMessages(dst chan<- interface{}, amount int) {
 	go func() {
 		for i := 0; i < amount; i++ {
 			dst <- i
+		}
+		close(dst)
+	}()
+}
+
+func genSmallestMessages(dst chan<- interface{}, amount int) {
+	go func() {
+		msg := struct{}{}
+		for i := 0; i < amount; i++ {
+			dst <- msg
 		}
 		close(dst)
 	}()

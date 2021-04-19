@@ -41,7 +41,7 @@ func TestPipeExecutesJobsConcurrently(t *testing.T) {
 
 	start := time.Now()
 
-	genMessages(pipe.in, concurrency)
+	genIntMessages(pipe.in, concurrency)
 
 	// wait for everything is processed
 	for range pipe.out {

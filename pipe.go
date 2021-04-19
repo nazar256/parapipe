@@ -1,20 +1,21 @@
 package parapipe
 
 type pipe struct {
-	in  chan interface{}
-	out chan interface{}
+	in    chan interface{}
+	out   chan interface{}
+	errCh chan error
 
 	queue     chan chan interface{}
 	closeInCh chan struct{}
 }
 
-// Job is the short callback signature, used in pipes
+// Job is a short callback signature, used in pipes
 type Job func(msg interface{}) interface{}
 
 func newPipe(job Job, concurrency int) *pipe {
 	p := &pipe{
-		in:  make(chan interface{}),
-		out: make(chan interface{}),
+		in:  make(chan interface{}, 1),
+		out: make(chan interface{}, 1),
 
 		queue:     make(chan chan interface{}, concurrency),
 		closeInCh: make(chan struct{}),

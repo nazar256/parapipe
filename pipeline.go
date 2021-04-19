@@ -37,7 +37,7 @@ func (p *Pipeline) Pipe(job Job) *Pipeline {
 	return p
 }
 
-// Out returns exit of the pipeline - channel with results of the last pipe
+// Out returns exit of the pipeline - channel with results of the last pipe. Call it once - it is not idempotent!
 func (p *Pipeline) Out() <-chan interface{} {
 	p.finalized = true
 	return p.pipes[len(p.pipes)-1].out
