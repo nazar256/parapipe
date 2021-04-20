@@ -3,13 +3,14 @@ package parapipe
 import (
 	"math/rand"
 	"testing"
+	"testing/quick"
 	"time"
 )
 
 func TestPipeMaintainsMessageOrder(t *testing.T) {
 	pipe := newPipe(func(msg interface{}) interface{} {
 		return msg.(int) + 1
-	}, rand.Intn(4))
+	}, rand.Intn(4), false)
 
 	inputValues := makeRange(100, 100+rand.Intn(1000))
 
@@ -37,7 +38,7 @@ func TestPipeExecutesJobsConcurrently(t *testing.T) {
 	pipe := newPipe(func(msg interface{}) interface{} {
 		time.Sleep(time.Duration(concurrency) * time.Millisecond)
 		return msg
-	}, concurrency)
+	}, concurrency, false)
 
 	start := time.Now()
 
@@ -53,5 +54,40 @@ func TestPipeExecutesJobsConcurrently(t *testing.T) {
 			"Expected to be executed concurrently in 100ms, actual duration was %dms",
 			duration/time.Millisecond,
 		)
+	}
+}
+
+func TestPipeCanSkipErrorProcessing(t *testing.T) {
+	concurrency := rand.Intn(20)
+	pipe := newPipe(func(msg interface{}) interface{} {
+		err := msg.(error)
+		if err != nil {
+			t.Error("error expected to not be passed to worker, but it was")
+		}
+		return msg
+	}, concurrency, false)
+
+	pipe.in <- new(quick.CheckError)
+	close(pipe.in)
+	<-pipe.out
+}
+
+func TestPipeCanProcessErrors(t *testing.T) {
+	concurrency := rand.Intn(20)
+	errProcessed := false
+	pipe := newPipe(func(msg interface{}) interface{} {
+		_, isErr := msg.(error)
+		if isErr {
+			errProcessed = true
+		}
+		return msg
+	}, concurrency, true)
+
+	pipe.in <- new(quick.CheckError)
+	close(pipe.in)
+	<-pipe.out
+
+	if !errProcessed {
+		t.Error("error expected to be passed to worker, but it was not")
 	}
 }

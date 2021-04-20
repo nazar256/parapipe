@@ -2,16 +2,22 @@ package parapipe
 
 // Pipeline executes jobs concurrently maintaining message order
 type Pipeline struct {
-	pipes       []*pipe
-	concurrency int
-	finalized   bool
+	cfg       Config
+	pipes     []*pipe
+	finalized bool
+}
+
+// Config contains pipeline parameters which influence execution or behavior
+type Config struct {
+	concurrency   int
+	processErrors bool
 }
 
 // NewPipeline creates new Pipeline instance, "concurrency" sets how many jobs can be executed concurrently in each pipe
-func NewPipeline(concurrency int) *Pipeline {
+func NewPipeline(cfg Config) *Pipeline {
 	return &Pipeline{
-		pipes:       make([]*pipe, 0, 1),
-		concurrency: concurrency,
+		pipes: make([]*pipe, 0, 1),
+		cfg:   cfg,
 	}
 }
 
@@ -26,7 +32,7 @@ func (p *Pipeline) Pipe(job Job) *Pipeline {
 		panic("attempt to create new pipeline after Out() call")
 	}
 
-	pipe := newPipe(job, p.concurrency)
+	pipe := newPipe(job, p.cfg.concurrency, p.cfg.processErrors)
 
 	if len(p.pipes) > 0 {
 		bindChannels(p.pipes[len(p.pipes)-1].out, pipe.in)

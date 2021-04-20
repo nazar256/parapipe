@@ -16,13 +16,3 @@ func genIntMessages(dst chan<- interface{}, amount int) {
 		close(dst)
 	}()
 }
-
-func genSmallestMessages(dst chan<- interface{}, amount int) {
-	go func() {
-		msg := struct{}{}
-		for i := 0; i < amount; i++ {
-			dst <- msg
-		}
-		close(dst)
-	}()
-}
