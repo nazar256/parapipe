@@ -9,11 +9,11 @@ type Pipeline struct {
 
 // Config contains pipeline parameters which influence execution or behavior
 type Config struct {
-	concurrency   int
-	processErrors bool
+	Concurrency   int  // how many messages to process concurrently for each pipe
+	ProcessErrors bool // if false, messages implementing "error" interface will not be passed to subsequent workers
 }
 
-// NewPipeline creates new Pipeline instance, "concurrency" sets how many jobs can be executed concurrently in each pipe
+// NewPipeline creates new Pipeline instance, "Concurrency" sets how many jobs can be executed concurrently in each pipe
 func NewPipeline(cfg Config) *Pipeline {
 	return &Pipeline{
 		pipes: make([]*pipe, 0, 1),
@@ -32,7 +32,7 @@ func (p *Pipeline) Pipe(job Job) *Pipeline {
 		panic("attempt to create new pipeline after Out() call")
 	}
 
-	pipe := newPipe(job, p.cfg.concurrency, p.cfg.processErrors)
+	pipe := newPipe(job, p.cfg.Concurrency, p.cfg.ProcessErrors)
 
 	if len(p.pipes) > 0 {
 		bindChannels(p.pipes[len(p.pipes)-1].out, pipe.in)

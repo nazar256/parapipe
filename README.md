@@ -26,8 +26,11 @@ Usage
 1. Create a pipeline
 
 ```go
-concurrencyFactor := 5 // how many callbacks can be executed concurrently for each pipe
-pipeline := parapipe.NewPipeline(concurrencyFactor)
+cfg := parapipe.Config{
+    Concurrency: 5,			// how many messages to process concurrently for each pipe
+    ProcessErrors: false,	// messages implementing "error" interface will not be passed to subsequent workers
+}
+pipeline := parapipe.NewPipeline(cfg)
 ```
 
 2. Add pipes - call `Pipe()` method one or more times
@@ -50,9 +53,20 @@ for result := range pipeline.Out() {
 ```go
 close(pipeline.In())
 ```   
+### Error handling
 
-5. To handle errors just return them as a result then listen to them on Out
+To handle errors just return them as a result then listen to them on Out. 
+By default, errors will not be processed by subsequent stages.
 ```go
+pipeline.Pipe(func(msg interface{}) interface{} {
+    inputValue := msg.(YourInputType)     // assert your type for the message
+    someValue, err := someOperation(inputValue)
+    if err != nil {
+        return err      // error can also be a result and can be returned from a pipeline stage (pipe)
+    }
+    return someValue
+})
+// ...
 for result := range pipeline.Out() {
     err := result.(error)
     if err != nil {
@@ -62,6 +76,32 @@ for result := range pipeline.Out() {
     typedResut := result.(YourResultType)
     // do something with the result
 }
+```
+
+Optionally you may allow passing errors to subsequent pipes. 
+For example, if you do not wish to stop the pipeline on errors, but rather process them in subsequent pipes.
+```go
+cfg := parapipe.Config{
+    Concurrency: 5,			// how many messages to process concurrently for each pipe
+    ProcessErrors: true,	// messages implementing "error" interface will be passed to subsequent workers as any message
+}
+pipeline := parapipe.NewPipeline(cfg).
+    Pipe(func(msg interface{}) interface{} {
+        inputValue := msg.(YourInputType)     // assert your type for the message
+        someValue, err := someOperation(inputValue)
+        if err != nil {
+            return err      // error can also be a result and can be returned from a pipeline stage (pipe)
+        }
+        return someValue
+    }).
+    Pipe(func(msg interface{}) interface{} {
+        switch inputValue := msg.(type) {
+            case error:
+                // process error 
+            case YourNormalExpectedType:
+                // process message normally
+        }
+    })
 ```
 
 ### Limitations
@@ -88,9 +128,11 @@ replies, err = amqpChannel.Consume(
     nil,               // args
 )
 
-concurrency := 4
-pipeSource := interface{}(replies).(<-chan interface{})
-pipeline := parapipe.NewPipeline(concurrency)
+cfg := parapipe.Config{
+    Concurrency: 5,			// how many messages to process concurrently for each pipe
+    ProcessErrors: false,	// messages implementing "error" interface will not be passed to subsequent workers
+}
+pipeline := parapipe.NewPipeline(cfg)
 
 go func() {
     for amqpMsg := range replies {

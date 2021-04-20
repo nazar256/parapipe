@@ -10,7 +10,7 @@ import (
 )
 
 func TestPipelineExecutesPipesInDefinedOrder(t *testing.T) {
-	pipeline := NewPipeline(Config{concurrency: rand.Intn(5) + 2}).
+	pipeline := NewPipeline(Config{Concurrency: rand.Intn(5) + 2}).
 		Pipe(func(msg interface{}) interface{} {
 			number := msg.(int)
 			return strconv.Itoa(number)
@@ -35,7 +35,7 @@ func TestPipelineExecutesPipesInDefinedOrder(t *testing.T) {
 
 func TestPipelineExecutesConcurrently(t *testing.T) {
 	inputValuesCount := 100
-	pipeline := NewPipeline(Config{concurrency: inputValuesCount}).
+	pipeline := NewPipeline(Config{Concurrency: inputValuesCount}).
 		Pipe(func(msg interface{}) interface{} {
 			time.Sleep(30 * time.Millisecond)
 			return msg.(int) + 1000
@@ -67,7 +67,7 @@ func TestPipelineExecutesConcurrently(t *testing.T) {
 
 func TestPipelineSkipsErrorsByDefault(t *testing.T) {
 	cnc := rand.Intn(20)
-	pipeline := NewPipeline(Config{concurrency: cnc}).
+	pipeline := NewPipeline(Config{Concurrency: cnc}).
 		Pipe(func(msg interface{}) interface{} {
 			_, isErr := msg.(error)
 			if isErr {
@@ -91,7 +91,7 @@ func TestPipelineSkipsErrorsByDefault(t *testing.T) {
 func TestPipelineCanProcessErrors(t *testing.T) {
 	cnc := rand.Intn(20)
 	errorProcessCount := 0
-	pipeline := NewPipeline(Config{concurrency: cnc, processErrors: true}).
+	pipeline := NewPipeline(Config{Concurrency: cnc, ProcessErrors: true}).
 		Pipe(func(msg interface{}) interface{} {
 			_, isErr := msg.(error)
 			if isErr {
@@ -119,7 +119,7 @@ func TestPipelineCanProcessErrors(t *testing.T) {
 func Benchmark1Pipe1Message(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		concurrency := 1
-		pipeline := NewPipeline(Config{concurrency: concurrency}).Pipe(func(msg interface{}) interface{} { return msg })
+		pipeline := NewPipeline(Config{Concurrency: concurrency}).Pipe(func(msg interface{}) interface{} { return msg })
 		genIntMessages(pipeline.In(), 1)
 		for range pipeline.Out() {
 		}
@@ -129,7 +129,7 @@ func Benchmark1Pipe1Message(b *testing.B) {
 func Benchmark5Pipes1Message(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		concurrency := 1
-		pipeline := NewPipeline(Config{concurrency: concurrency}).
+		pipeline := NewPipeline(Config{Concurrency: concurrency}).
 			Pipe(func(msg interface{}) interface{} { return msg }).
 			Pipe(func(msg interface{}) interface{} { return msg }).
 			Pipe(func(msg interface{}) interface{} { return msg }).
@@ -143,7 +143,7 @@ func Benchmark5Pipes1Message(b *testing.B) {
 
 func Benchmark1Pipe10000Messages(b *testing.B) {
 	concurrency := 8
-	pipeline := NewPipeline(Config{concurrency: concurrency}).Pipe(func(msg interface{}) interface{} { return msg })
+	pipeline := NewPipeline(Config{Concurrency: concurrency}).Pipe(func(msg interface{}) interface{} { return msg })
 	batchAmount := 10000
 
 	for n := 0; n < b.N; n++ {
