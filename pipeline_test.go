@@ -147,18 +147,39 @@ func Benchmark5Pipes1Message(b *testing.B) {
 func Benchmark1Pipe10000Messages(b *testing.B) {
 	concurrency := 8
 	pipeline := NewPipeline(Config{Concurrency: concurrency}).Pipe(func(msg interface{}) interface{} { return msg })
-	batchAmount := 10000
+	msgCount := 10000
 
 	for n := 0; n < b.N; n++ {
 		go func() {
-			msg := struct{}{}
+			for i := 0; i < msgCount; i++ {
+				pipeline.In() <- i
+			}
+		}()
 
-			for i := 0; i < batchAmount; i++ {
+		for i := 0; i < msgCount; i++ {
+			<-pipeline.Out()
+		}
+	}
+
+	close(pipeline.In())
+}
+
+func Benchmark1Pipe10000MessagesBatchedBy100(b *testing.B) {
+	concurrency := 8
+	pipeline := NewPipeline(Config{Concurrency: concurrency}).Pipe(func(msg interface{}) interface{} { return msg })
+	batchCount := 100
+	batchSize := 100
+
+	for n := 0; n < b.N; n++ {
+		go func() {
+			msg := makeRange(1, batchSize)
+
+			for i := 0; i < batchCount; i++ {
 				pipeline.In() <- msg
 			}
 		}()
 
-		for i := 0; i < batchAmount; i++ {
+		for i := 0; i < batchCount; i++ {
 			<-pipeline.Out()
 		}
 	}

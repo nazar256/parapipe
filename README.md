@@ -110,6 +110,21 @@ pipeline := parapipe.NewPipeline(cfg).
   need to stream values somewhere from the middle of the pipeline - just send them to your own channel.
 * as at the time of writing Go does not have generics, you have to assert the type for incoming messages in pipes explicitly.
 
+### Performance
+
+As already was mentioned, parapipe makes use of `interface{}` and also executes callbacks in a separate goroutine per each message.
+This can have a great performance impact because of heap allocation and creation of goroutines.
+For instance if you try to stream a slice of integers, each of them will be converted to an interface type and 
+will likely be allocated in heap. 
+Moreover, if an execution time of each step is relatively small goroutine creation may decrease overall performance considerably.
+
+If the performance is the priority, its recommended that you pack such messages in batches (i.e. slices)
+and stream that batches instead. 
+Obviously that's your responsibility to process batch in the order you like inside step (pipe) callback.
+
+Basically the overall recommendations for choosing batch size are in general the same as if you have to create a slice of interfaces
+or create a new goroutine.
+
 Examples
 --------
 
