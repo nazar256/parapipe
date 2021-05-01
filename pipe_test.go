@@ -18,6 +18,7 @@ func TestPipeMaintainsMessageOrder(t *testing.T) {
 		for input := range inputValues {
 			pipe.in <- input
 		}
+
 		close(pipe.in)
 	}()
 

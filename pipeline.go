@@ -54,6 +54,7 @@ func bindChannels(from <-chan interface{}, to chan<- interface{}) {
 		for msg := range from {
 			to <- msg
 		}
+
 		close(to)
 	}(from, to)
 }

@@ -23,6 +23,7 @@ func TestPipelineExecutesPipesInDefinedOrder(t *testing.T) {
 	genIntMessages(pipeline.In(), 100)
 
 	i := 0
+
 	for actualResult := range pipeline.Out() {
 		expected := fmt.Sprintf("#%d", i)
 		if actualResult != expected {
@@ -50,17 +51,17 @@ func TestPipelineExecutesConcurrently(t *testing.T) {
 		})
 
 	start := time.Now()
+
 	genIntMessages(pipeline.In(), inputValuesCount)
 
 	// wait for all results
 	for range pipeline.Out() {
 	}
 
-	duration := time.Since(start)
-	if duration > 150*time.Millisecond {
+	if time.Since(start) > 150*time.Millisecond {
 		t.Errorf(
 			"Expected to be executed concurrently in 100ms, actual duration was %dms",
-			duration/time.Millisecond,
+			time.Since(start)/time.Millisecond,
 		)
 	}
 }
@@ -121,6 +122,7 @@ func Benchmark1Pipe1Message(b *testing.B) {
 		concurrency := 1
 		pipeline := NewPipeline(Config{Concurrency: concurrency}).Pipe(func(msg interface{}) interface{} { return msg })
 		genIntMessages(pipeline.In(), 1)
+
 		for range pipeline.Out() {
 		}
 	}
@@ -136,6 +138,7 @@ func Benchmark5Pipes1Message(b *testing.B) {
 			Pipe(func(msg interface{}) interface{} { return msg }).
 			Pipe(func(msg interface{}) interface{} { return msg })
 		genIntMessages(pipeline.In(), 1)
+
 		for range pipeline.Out() {
 		}
 	}
@@ -149,10 +152,12 @@ func Benchmark1Pipe10000Messages(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		go func() {
 			msg := struct{}{}
+
 			for i := 0; i < batchAmount; i++ {
 				pipeline.In() <- msg
 			}
 		}()
+
 		for i := 0; i < batchAmount; i++ {
 			<-pipeline.Out()
 		}

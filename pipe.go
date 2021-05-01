@@ -36,12 +36,14 @@ func newPipe(job Job, concurrency int, processErrors bool) *pipe {
 			}
 			p.queue <- queued
 		}
+
 		close(p.queue)
 	}()
 
 	go func() {
 		for processed := range p.queue {
 			p.out <- <-processed
+
 			close(processed)
 		}
 
