@@ -20,7 +20,7 @@ func TestPipelineExecutesPipesInDefinedOrder(t *testing.T) {
 			return "#" + str
 		})
 
-	genIntMessages(pipeline.In(), 100)
+	feedPipeline(pipeline, 100)
 
 	i := 0
 
@@ -52,7 +52,7 @@ func TestPipelineExecutesConcurrently(t *testing.T) {
 
 	start := time.Now()
 
-	genIntMessages(pipeline.In(), inputValuesCount)
+	feedPipeline(pipeline, inputValuesCount)
 
 	// wait for all results
 	for range pipeline.Out() {
@@ -84,8 +84,8 @@ func TestPipelineSkipsErrorsByDefault(t *testing.T) {
 			return msg
 		})
 
-	pipeline.In() <- new(quick.CheckError)
-	close(pipeline.In())
+	pipeline.Push(new(quick.CheckError))
+	pipeline.Close()
 	<-pipeline.Out()
 }
 
@@ -108,8 +108,8 @@ func TestPipelineCanProcessErrors(t *testing.T) {
 			return msg
 		})
 
-	pipeline.In() <- new(quick.CheckError)
-	close(pipeline.In())
+	pipeline.Push(new(quick.CheckError))
+	pipeline.Close()
 	<-pipeline.Out()
 
 	if errorProcessCount != 2 {
@@ -121,7 +121,7 @@ func Benchmark1Pipe1Message(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		concurrency := 1
 		pipeline := NewPipeline(Config{Concurrency: concurrency}).Pipe(func(msg interface{}) interface{} { return msg })
-		genIntMessages(pipeline.In(), 1)
+		feedPipeline(pipeline, 1)
 
 		for range pipeline.Out() {
 		}
@@ -137,7 +137,7 @@ func Benchmark5Pipes1Message(b *testing.B) {
 			Pipe(func(msg interface{}) interface{} { return msg }).
 			Pipe(func(msg interface{}) interface{} { return msg }).
 			Pipe(func(msg interface{}) interface{} { return msg })
-		genIntMessages(pipeline.In(), 1)
+		feedPipeline(pipeline, 1)
 
 		for range pipeline.Out() {
 		}
@@ -152,7 +152,7 @@ func Benchmark1Pipe10000Messages(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		go func() {
 			for i := 0; i < msgCount; i++ {
-				pipeline.In() <- i
+				pipeline.Push(i)
 			}
 		}()
 
@@ -161,7 +161,7 @@ func Benchmark1Pipe10000Messages(b *testing.B) {
 		}
 	}
 
-	close(pipeline.In())
+	pipeline.Close()
 }
 
 func Benchmark1Pipe10000MessagesBatchedBy100(b *testing.B) {
@@ -175,7 +175,7 @@ func Benchmark1Pipe10000MessagesBatchedBy100(b *testing.B) {
 			msg := makeRange(1, batchSize)
 
 			for i := 0; i < batchCount; i++ {
-				pipeline.In() <- msg
+				pipeline.Push(msg)
 			}
 		}()
 
@@ -184,5 +184,5 @@ func Benchmark1Pipe10000MessagesBatchedBy100(b *testing.B) {
 		}
 	}
 
-	close(pipeline.In())
+	pipeline.Close()
 }

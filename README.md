@@ -2,9 +2,8 @@ Parapipe - paralleling pipeline
 ===============================
 
 The library provides a zero-dependency non-blocking buffered FIFO-pipeline for structuring the code and vertically scaling your app. 
-The main difference from a regular pipeline example you may find on the internet - pipeline executes everything on each step concurrently,
-yet maintaining the order. Although, this library does not use any locks or mutexes, or any other thread synchronization
-tools. Just pure channels.
+The main difference from a regular pipeline example you may find on the internet - parapipe executes everything on each step concurrently,
+yet maintaining the order. Although, this library does not use any locks or mutexes. Just pure channels.
 
 When to use
 -----------
@@ -48,11 +47,21 @@ for result := range pipeline.Out() {
     // do something with the result
 }
 ```
-4. Close pipeline with closing it's input channel. All internal channels, goroutines, including `Out()` channel will be
-   closed in a cascade.
+It's **important** to read everything from "out" even when the pipeline won't produce any viable result. 
+It will be stuck otherwise.
+
+4. Push values for processing into the pipeline. 
+   You can do this even before a `Pipe` call, but beware that in such case the `Push` can be blocked when input queue is filled:
 ```go
-close(pipeline.In())
+pipeline.Push("something")
 ```   
+
+4. Close pipeline to clean up its resources and close its output channel after the last message. 
+   All internal channels, goroutines, including `Out()` channel will be closed in a cascade.
+```go
+pipeline.Close()
+```   
+
 ### Error handling
 
 To handle errors just return them as a result then listen to them on Out. 
@@ -106,9 +115,10 @@ pipeline := parapipe.NewPipeline(cfg).
 
 ### Limitations
 
-* `Out()` method can be used only once on each pipeline. Any subsequent `Pipe()` call will cause panic. Though, when you
-  need to stream values somewhere from the middle of the pipeline - just send them to your own channel.
-* as at the time of writing Go does not have generics, you have to assert the type for incoming messages in pipes explicitly.
+* `Out()` method can be used only once on each pipeline. Any subsequent `Pipe()` call will cause panic. 
+  Though, when you need to stream values somewhere from the middle of the pipeline - just send them to your own channel.
+* as at the time of writing Go does not have generics, you have to assert the type for incoming messages in pipes explicitly,
+which means the type of the message can be checked in runtime only.
 
 ### Performance
 
@@ -116,7 +126,8 @@ As already was mentioned, parapipe makes use of `interface{}` and also executes 
 This can have a great performance impact because of heap allocation and creation of goroutines.
 For instance if you try to stream a slice of integers, each of them will be converted to an interface type and 
 will likely be allocated in heap. 
-Moreover, if an execution time of each step is relatively small goroutine creation may decrease overall performance considerably.
+Moreover, if an execution time of each step is relatively small,
+than a goroutine creation may decrease overall performance considerably.
 
 If the performance is the priority, its recommended that you pack such messages in batches (i.e. slices)
 and stream that batches instead. 
@@ -151,9 +162,9 @@ pipeline := parapipe.NewPipeline(cfg)
 
 go func() {
     for amqpMsg := range replies {
-        pipeline.In() <- amqpMsg
+        pipeline.Push(amqpMsg)
     }
-    close(pipeline.In())
+    pipeline.Close()
 }()
 
 // here pipeline starts to process messages immediately (once they are sent above) even before "Out()" is called

@@ -17,3 +17,12 @@ func genIntMessages(dst chan<- interface{}, amount int) {
 		close(dst)
 	}()
 }
+
+func feedPipeline(pipeline *Pipeline, amount int) {
+	go func() {
+		for i := 0; i < amount; i++ {
+			pipeline.Push(i)
+		}
+		pipeline.Close()
+	}()
+}
