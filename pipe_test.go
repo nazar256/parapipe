@@ -7,27 +7,36 @@ import (
 	"time"
 )
 
+func genIntMessages(dst chan<- interface{}, amount int) {
+	go func() {
+		for i := 0; i < amount; i++ {
+			dst <- i
+		}
+		close(dst)
+	}()
+}
+
 func TestPipeMaintainsMessageOrder(t *testing.T) {
 	pipe := newPipe(func(msg interface{}) interface{} {
 		return msg.(int) + 1
 	}, rand.Intn(4), false)
 
-	inputValues := makeRange(100, 100+rand.Intn(1000))
+	msgAmount := 100 + rand.Intn(1000)
 
 	go func() {
-		for input := range inputValues {
+		for input := 0; input < msgAmount; input++ {
 			pipe.in <- input
 		}
 
 		close(pipe.in)
 	}()
 
-	for input := range inputValues {
+	for input := 0; input < msgAmount; input++ {
 		expected := input + 1
 		actual := <-pipe.out
 
 		if actual != expected {
-			t.Errorf("order not maintained, expected %d in sequence of %d, got %d", expected, len(inputValues), actual)
+			t.Errorf("order not maintained, expected %d in sequence of %d, got %d", expected, msgAmount, actual)
 			t.Fail()
 		}
 	}
