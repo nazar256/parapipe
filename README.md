@@ -56,7 +56,7 @@ It will be stuck otherwise.
 pipeline.Push("something")
 ```   
 
-4. Close pipeline to clean up its resources and close its output channel after the last message. 
+5. Close pipeline to clean up its resources and close its output channel after the last message. 
    All internal channels, goroutines, including `Out()` channel will be closed in a cascade.
 ```go
 pipeline.Close()
