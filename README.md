@@ -136,6 +136,9 @@ Obviously that's your responsibility to process batch in the order you like insi
 Basically the overall recommendations for choosing batch size are in general the same as if you have to create a slice of interfaces
 or create a new goroutine.
 
+In the future releases "batching" feature will be included in this library. Subscribe to the changes.
+Please, file an issue on GitHub if you require this feature - then it will be implemented any time soon.
+
 Examples
 --------
 

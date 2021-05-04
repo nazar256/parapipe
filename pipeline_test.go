@@ -92,9 +92,8 @@ func TestPipelineSkipsErrorsByDefault(t *testing.T) {
 }
 
 func TestPipelineCanProcessErrors(t *testing.T) {
-	cnc := rand.Intn(20)
 	errorProcessCount := 0
-	pipeline := parapipe.NewPipeline(parapipe.Config{Concurrency: cnc, ProcessErrors: true}).
+	pipeline := parapipe.NewPipeline(parapipe.Config{ProcessErrors: true}).
 		Pipe(func(msg interface{}) interface{} {
 			_, isErr := msg.(error)
 			if isErr {
