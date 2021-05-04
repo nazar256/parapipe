@@ -50,8 +50,7 @@ for result := range pipeline.Out() {
 It's **important** to read everything from "out" even when the pipeline won't produce any viable result. 
 It will be stuck otherwise.
 
-4. Push values for processing into the pipeline. 
-   You can do this even before a `Pipe` call, but beware that in such case the `Push` can be blocked when input queue is filled:
+4. Push values for processing into the pipeline:
 ```go
 pipeline.Push("something")
 ```   
@@ -117,6 +116,7 @@ pipeline := parapipe.NewPipeline(cfg).
 
 * `Out()` method can be used only once on each pipeline. Any subsequent `Pipe()` call will cause panic. 
   Though, when you need to stream values somewhere from the middle of the pipeline - just send them to your own channel.
+* do not try to `Push` to the pipeline before the first `Pipe` is defined - it will panic
 * as at the time of writing Go does not have generics, you have to assert the type for incoming messages in pipes explicitly,
 which means the type of the message can be checked in runtime only.
 
@@ -143,57 +143,7 @@ Examples
 
 Parapipe can be handful when you need to process messages in the middle concurrently, yet maintaining their order.
 
-```go
-replies, err = amqpChannel.Consume(
-    q.Name,            // queue
-    "go-amqp-example", // consumer
-    true,              // auto-ack
-    false,             // exclusive
-    false,             // no-local
-    false,             // no-wait
-    nil,               // args
-)
-
-cfg := parapipe.Config{
-    Concurrency: 5,			// how many messages to process concurrently for each pipe
-    ProcessErrors: false,	// messages implementing "error" interface will not be passed to subsequent workers
-}
-pipeline := parapipe.NewPipeline(cfg)
-
-go func() {
-    for amqpMsg := range replies {
-        pipeline.Push(amqpMsg)
-    }
-    pipeline.Close()
-}()
-
-// here pipeline starts to process messages immediately (once they are sent above) even before "Out()" is called
-pipeline.
-    Pipe(func(msg interface{}) interface{} {
-        event := &Event{}
-        _ = json.Unmarshal(msg.(amqp.Delivery).Body, event)
-        return event
-    }).
-    Pipe(func(msg interface{}) interface{} {
-        event := msg.(Event)
-        // validate the event
-        return event
-    }).
-    Pipe(func(msg interface{}) interface{} {
-        payload, _ := json.Marshal(msg.(Event))
-        // publish as new event
-        err = amqpChannel.Publish(
-        "some-exchange",
-        "some:routing:key",
-        false,
-        false,
-        amqp.Publishing{
-            ContentType: "application/json",
-            Body:        payload,
-        })
-        return nil
-    })
-```
+See the [working example of using parapipe in AMQP client](https://github.com/nazar256/go-amqp-sniffer/commit/fa5fbe980d8585398d903d11812ad0864160f0c9#diff-6916a6fbcaa17c5ff1c31aa11cb98e135870b908e9292fb7da3cc2d4013108e3R49-R116).
 
 ### Other examples
 

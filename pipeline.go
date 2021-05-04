@@ -16,7 +16,7 @@ type Config struct {
 	ProcessErrors bool // if false, messages implementing "error" interface will not be passed to subsequent workers
 }
 
-// NewPipeline creates new Pipeline instance, "Concurrency" sets how many jobs can be executed concurrently in each pipe
+// NewPipeline creates new pipeline instance, "Concurrency" sets how many jobs can be executed concurrently in each pipe
 func NewPipeline(cfg Config) *Pipeline {
 	if cfg.Concurrency < 1 {
 		cfg.Concurrency = runtime.NumCPU()
