@@ -1,8 +1,10 @@
 Parapipe - paralleling pipeline
 ===============================
 
-The library provides a zero-dependency non-blocking buffered FIFO-pipeline for structuring the code and vertically scaling your app. 
-The main difference from a regular pipeline example you may find on the internet - parapipe executes everything on each step concurrently,
+The library provides a zero-dependency non-blocking buffered FIFO-pipeline 
+for structuring the code and vertically scaling your app. 
+The main difference from a regular pipeline example you may find on the internet - 
+parapipe executes everything on each step concurrently,
 yet maintaining the order. Although, this library does not use any locks or mutexes. Just pure channels.
 
 When to use
@@ -136,9 +138,6 @@ Obviously that's your responsibility to process batch in the order you like insi
 Basically the overall recommendations for choosing batch size are in general the same as if you have to create a slice of interfaces
 or create a new goroutine.
 
-In the future releases "batching" feature will be included in this library. Subscribe to the changes.
-Please, file an issue on GitHub if you require this feature - then it will be implemented any time soon.
-
 Examples
 --------
 
@@ -146,7 +145,7 @@ Examples
 
 Parapipe can be handful when you need to process messages in the middle concurrently, yet maintaining their order.
 
-See the [working example of using parapipe in AMQP client](https://github.com/nazar256/go-amqp-sniffer/commit/fa5fbe980d8585398d903d11812ad0864160f0c9#diff-6916a6fbcaa17c5ff1c31aa11cb98e135870b908e9292fb7da3cc2d4013108e3R49-R116).
+See the [working example of using parapipe in AMQP client](http://github.com/nazar256/go-amqp-sniffer/blob/a5c5db375dc68a2e83c24686e4e57a63cf08c80b/sniffer/sniffer.go#L49-L108).
 
 ### Other examples
 
