@@ -1,7 +1,7 @@
 Parapipe - paralleling pipeline
 ===============================
 
-[![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go#data-structures)
+[![Mentioned in Awesome Go](https://awesome.re/mentioned-badge-flat.svg)](https://github.com/avelino/awesome-go#data-structures)
 [![tests](https://github.com/nazar256/parapipe/actions/workflows/tests.yml/badge.svg)](https://github.com/nazar256/parapipe/actions/workflows/tests.yml)
 [![linters](https://github.com/nazar256/parapipe/actions/workflows/linters.yml/badge.svg)](https://github.com/nazar256/parapipe/actions/workflows/linters.yml)
 [![coverage](https://codecov.io/gh/nazar256/parapipe/branch/main/graph/badge.svg?token=N6NI66KPXG)](https://codecov.io/gh/nazar256/parapipe)
