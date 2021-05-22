@@ -1,6 +1,8 @@
 Parapipe - paralleling pipeline
 ===============================
 
+[![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go#data-structures)
+
 The library provides a zero-dependency non-blocking buffered FIFO-pipeline 
 for structuring the code and vertically scaling your app. 
 The main difference from a regular pipeline example you may find on the internet - 
