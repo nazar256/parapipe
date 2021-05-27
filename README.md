@@ -1,16 +1,17 @@
 Parapipe - paralleling pipeline
 ===============================
 
-[![Mentioned in Awesome Go](https://awesome.re/mentioned-badge-flat.svg)](https://github.com/avelino/awesome-go#data-structures)
+[![Mentioned in Awesome Go](https://awesome.re/mentioned-badge-flat.svg)](https://github.com/avelino/awesome-go)
 [![tests](https://github.com/nazar256/parapipe/actions/workflows/tests.yml/badge.svg)](https://github.com/nazar256/parapipe/actions/workflows/tests.yml)
 [![linters](https://github.com/nazar256/parapipe/actions/workflows/linters.yml/badge.svg)](https://github.com/nazar256/parapipe/actions/workflows/linters.yml)
 [![coverage](https://codecov.io/gh/nazar256/parapipe/branch/main/graph/badge.svg?token=N6NI66KPXG)](https://codecov.io/gh/nazar256/parapipe)
+[![Go Report Card](https://goreportcard.com/badge/github.com/nazar256/parapipe)](https://goreportcard.com/report/github.com/nazar256/parapipe)
+[![GoDoc](https://godoc.org/github.com/nazar256/parapipe?status.svg)](https://godoc.org/github.com/nazar256/parapipe)
 
 The library provides a zero-dependency non-blocking buffered FIFO-pipeline 
 for structuring the code and vertically scaling your app. 
-The main difference from a regular pipeline example you may find on the internet - 
-parapipe executes everything on each step concurrently,
-yet maintaining the order. Although, this library does not use any locks or mutexes. Just pure channels.
+Unlike regular pipeline examples you may find on the internet - parapipe executes everything on each step concurrently,
+yet maintaining the output order. Although, this library does not use any locks or mutexes. Just pure channels.
 
 When to use
 -----------
