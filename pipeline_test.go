@@ -12,12 +12,13 @@ import (
 )
 
 func TestPipelineExecutesPipesInDefinedOrder(t *testing.T) {
-	pipeline := parapipe.NewPipeline(parapipe.Config{Concurrency: rand.Intn(5) + 2}).
-		Pipe(func(msg interface{}) interface{} {
+	concurrency := rand.Intn(5) + 2
+	pipeline := parapipe.NewPipeline(parapipe.Config{}).
+		Pipe(concurrency, func(msg interface{}) interface{} {
 			number := msg.(int)
 			return strconv.Itoa(number)
 		}).
-		Pipe(func(msg interface{}) interface{} {
+		Pipe(concurrency, func(msg interface{}) interface{} {
 			str := msg.(string)
 			return "#" + str
 		})
@@ -38,16 +39,17 @@ func TestPipelineExecutesPipesInDefinedOrder(t *testing.T) {
 
 func TestPipelineExecutesConcurrently(t *testing.T) {
 	inputValuesCount := 100
-	pipeline := parapipe.NewPipeline(parapipe.Config{Concurrency: inputValuesCount}).
-		Pipe(func(msg interface{}) interface{} {
+	concurrency := inputValuesCount
+	pipeline := parapipe.NewPipeline(parapipe.Config{}).
+		Pipe(concurrency, func(msg interface{}) interface{} {
 			time.Sleep(30 * time.Millisecond)
 			return msg.(int) + 1000
 		}).
-		Pipe(func(msg interface{}) interface{} {
+		Pipe(concurrency, func(msg interface{}) interface{} {
 			time.Sleep(30 * time.Millisecond)
 			return strconv.Itoa(msg.(int))
 		}).
-		Pipe(func(msg interface{}) interface{} {
+		Pipe(concurrency, func(msg interface{}) interface{} {
 			time.Sleep(30 * time.Millisecond)
 			return "#" + msg.(string)
 		})
@@ -69,16 +71,16 @@ func TestPipelineExecutesConcurrently(t *testing.T) {
 }
 
 func TestPipelineSkipsErrorsByDefault(t *testing.T) {
-	cnc := rand.Intn(20)
-	pipeline := parapipe.NewPipeline(parapipe.Config{Concurrency: cnc}).
-		Pipe(func(msg interface{}) interface{} {
+	concurrency := rand.Intn(20)
+	pipeline := parapipe.NewPipeline(parapipe.Config{}).
+		Pipe(concurrency, func(msg interface{}) interface{} {
 			_, isErr := msg.(error)
 			if isErr {
 				t.Error("Error expected to be skipped from processing, but worker has received one")
 			}
 			return msg
 		}).
-		Pipe(func(msg interface{}) interface{} {
+		Pipe(concurrency, func(msg interface{}) interface{} {
 			_, isErr := msg.(error)
 			if isErr {
 				t.Error("Error expected to be skipped from processing, but worker has received one")
@@ -94,14 +96,14 @@ func TestPipelineSkipsErrorsByDefault(t *testing.T) {
 func TestPipelineCanProcessErrors(t *testing.T) {
 	errorProcessCount := 0
 	pipeline := parapipe.NewPipeline(parapipe.Config{ProcessErrors: true}).
-		Pipe(func(msg interface{}) interface{} {
+		Pipe(0, func(msg interface{}) interface{} {
 			_, isErr := msg.(error)
 			if isErr {
 				errorProcessCount++
 			}
 			return msg
 		}).
-		Pipe(func(msg interface{}) interface{} {
+		Pipe(0, func(msg interface{}) interface{} {
 			_, isErr := msg.(error)
 			if isErr {
 				errorProcessCount++
@@ -121,8 +123,8 @@ func TestPipelineCanProcessErrors(t *testing.T) {
 func Benchmark1Pipe1Message(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		concurrency := 1
-		pipeline := parapipe.NewPipeline(parapipe.Config{Concurrency: concurrency}).
-			Pipe(func(msg interface{}) interface{} { return msg })
+		pipeline := parapipe.NewPipeline(parapipe.Config{}).
+			Pipe(concurrency, func(msg interface{}) interface{} { return msg })
 		feedPipeline(pipeline, 1)
 
 		for range pipeline.Out() {
@@ -133,12 +135,12 @@ func Benchmark1Pipe1Message(b *testing.B) {
 func Benchmark5Pipes1Message(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		concurrency := 1
-		pipeline := parapipe.NewPipeline(parapipe.Config{Concurrency: concurrency}).
-			Pipe(func(msg interface{}) interface{} { return msg }).
-			Pipe(func(msg interface{}) interface{} { return msg }).
-			Pipe(func(msg interface{}) interface{} { return msg }).
-			Pipe(func(msg interface{}) interface{} { return msg }).
-			Pipe(func(msg interface{}) interface{} { return msg })
+		pipeline := parapipe.NewPipeline(parapipe.Config{}).
+			Pipe(concurrency, func(msg interface{}) interface{} { return msg }).
+			Pipe(concurrency, func(msg interface{}) interface{} { return msg }).
+			Pipe(concurrency, func(msg interface{}) interface{} { return msg }).
+			Pipe(concurrency, func(msg interface{}) interface{} { return msg }).
+			Pipe(concurrency, func(msg interface{}) interface{} { return msg })
 		feedPipeline(pipeline, 1)
 
 		for range pipeline.Out() {
@@ -148,8 +150,8 @@ func Benchmark5Pipes1Message(b *testing.B) {
 
 func Benchmark1Pipe10000Messages(b *testing.B) {
 	concurrency := 8
-	pipeline := parapipe.NewPipeline(parapipe.Config{Concurrency: concurrency}).
-		Pipe(func(msg interface{}) interface{} { return msg })
+	pipeline := parapipe.NewPipeline(parapipe.Config{}).
+		Pipe(concurrency, func(msg interface{}) interface{} { return msg })
 	msgCount := 10000
 
 	for n := 0; n < b.N; n++ {
@@ -169,8 +171,8 @@ func Benchmark1Pipe10000Messages(b *testing.B) {
 
 func Benchmark1Pipe10000MessagesBatchedBy100(b *testing.B) {
 	concurrency := 8
-	pipeline := parapipe.NewPipeline(parapipe.Config{Concurrency: concurrency}).
-		Pipe(func(msg interface{}) interface{} { return msg })
+	pipeline := parapipe.NewPipeline(parapipe.Config{}).
+		Pipe(concurrency, func(msg interface{}) interface{} { return msg })
 	batchCount := 100
 	batchSize := 100
 

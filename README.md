@@ -34,7 +34,6 @@ Usage
 
 ```go
 cfg := parapipe.Config{
-    Concurrency: 5,			// how many messages to process concurrently for each pipe
     ProcessErrors: false,	// messages implementing "error" interface will not be passed to subsequent workers
 }
 pipeline := parapipe.NewPipeline(cfg)
@@ -42,7 +41,8 @@ pipeline := parapipe.NewPipeline(cfg)
 
 2. Add pipes - call `Pipe()` method one or more times
 ```go
-pipeline.Pipe(func(msg interface{}) interface{} {
+concurrency := 5    // how many messages to process concurrently for each pipe
+pipeline.Pipe(concurrency, func(msg interface{}) interface{} {
     typedMsg := msg.(YourInputType)     // assert your type for the message
     // do something and generate a new value "someValue"
     return someValue
@@ -65,6 +65,7 @@ pipeline.Push("something")
 
 5. Close pipeline to clean up its resources and close its output channel after the last message. 
    All internal channels, goroutines, including `Out()` channel will be closed in a cascade.
+   It's not recommended closing pipeline using `defer` because you may not want to hang output util defer is executed.
 ```go
 pipeline.Close()
 ```   
@@ -74,7 +75,7 @@ pipeline.Close()
 To handle errors just return them as a result then listen to them on Out. 
 By default, errors will not be processed by subsequent stages.
 ```go
-pipeline.Pipe(func(msg interface{}) interface{} {
+pipeline.Pipe(4, func(msg interface{}) interface{} {
     inputValue := msg.(YourInputType)     // assert your type for the message
     someValue, err := someOperation(inputValue)
     if err != nil {
@@ -98,11 +99,12 @@ Optionally you may allow passing errors to subsequent pipes.
 For example, if you do not wish to stop the pipeline on errors, but rather process them in subsequent pipes.
 ```go
 cfg := parapipe.Config{
-    Concurrency: 5,			// how many messages to process concurrently for each pipe
     ProcessErrors: true,	// messages implementing "error" interface will be passed to subsequent workers as any message
 }
+concurrency := 5    // how many messages to process concurrently for each pipe
+
 pipeline := parapipe.NewPipeline(cfg).
-    Pipe(func(msg interface{}) interface{} {
+    Pipe(concurrency, func(msg interface{}) interface{} {
         inputValue := msg.(YourInputType)     // assert your type for the message
         someValue, err := someOperation(inputValue)
         if err != nil {
@@ -110,7 +112,7 @@ pipeline := parapipe.NewPipeline(cfg).
         }
         return someValue
     }).
-    Pipe(func(msg interface{}) interface{} {
+    Pipe(concurrency, func(msg interface{}) interface{} {
         switch inputValue := msg.(type) {
             case error:
                 // process error 
