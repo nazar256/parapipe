@@ -28,8 +28,6 @@ linters-settings:
     local-prefixes: github.com/golangci/golangci-lint
   lll:
     line-length: 120
-  maligned:
-    suggest-new: true
   misspell:
     locale: US
   nolintlint:
@@ -54,7 +52,6 @@ linters:
     - gocyclo
     - gofmt
     - goimports
-    - golint
     - gomnd
     - goprintffuncname
     - gosec
@@ -76,13 +73,10 @@ linters:
     - varcheck
     - whitespace
     - asciicheck
-    - scopelint
     - gochecknoglobals
     - gocognit
     - godox
     - goerr113
-    - interfacer
-    - maligned
     - nestif
     - prealloc
     - revive

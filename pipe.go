@@ -12,8 +12,10 @@ type pipe struct {
 // Job is a short callback signature, used in pipes
 type Job func(msg interface{}) interface{}
 
-type jobChan chan interface{}
-type queuedJobChan chan interface{}
+type (
+	jobChan       chan interface{}
+	queuedJobChan chan interface{}
+)
 
 func newPipe(job Job, concurrency int, processErrors bool) *pipe {
 	p := &pipe{
