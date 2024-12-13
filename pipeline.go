@@ -1,74 +1,58 @@
 package parapipe
 
-import "runtime"
+import "log/slog"
 
-// Pipeline executes jobs concurrently maintaining message order
-type Pipeline struct {
-	cfg    Config
-	pipes  []*pipe
-	hasOut bool
+type Config struct{}
+
+type Pipeline[I, O any] struct {
+	inCh   chan<- I
+	outCh  <-chan O
 	closed bool
 }
 
-// Config contains pipeline parameters which influence execution or behavior
-type Config struct {
-	ProcessErrors bool // if false, messages implementing "error" interface will not be passed to subsequent workers
-}
+func NewPipeline[I, O any](concurrency int, callback Callback[I, O]) *Pipeline[I, O] {
+	p := newPipe[I, O](concurrency, callback)
 
-// NewPipeline creates new pipeline instance, "Concurrency" sets how many jobs can be executed concurrently in each pipe
-func NewPipeline(cfg Config) *Pipeline {
-	return &Pipeline{
-		pipes: make([]*pipe, 0, 1),
-		cfg:   cfg,
+	return &Pipeline[I, O]{
+		inCh:  p.in,
+		outCh: p.out,
 	}
 }
 
-// Push adds a value to the pipeline for processing, it is immediately queued to be processed
-func (p *Pipeline) Push(v interface{}) {
-	p.pipes[0].in <- v
+func (p *Pipeline[I, O]) Push(v I) {
+	if p.closed {
+		slog.Error("cannot push after Close is called")
+		return
+	}
+	p.inCh <- v
 }
 
-// Pipe adds new pipe to pipeline with the callback for processing each message
-// Concurrency indicates how many messages to process concurrently for this pipe
-func (p *Pipeline) Pipe(concurrency int, job Job) *Pipeline {
-	if concurrency < 1 {
-		concurrency = runtime.NumCPU()
-	}
-
-	if p.hasOut || p.closed {
-		panic("attempt to create new pipeline after Out() call")
-	}
-
-	pipe := newPipe(job, concurrency, p.cfg.ProcessErrors)
-
-	if len(p.pipes) > 0 {
-		bindChannels(p.pipes[len(p.pipes)-1].out, pipe.in)
-	}
-
-	p.pipes = append(p.pipes, pipe)
-
-	return p
+func (p *Pipeline[I, O]) Out() <-chan O {
+	return p.outCh
 }
 
-// Out returns exit of the pipeline - channel with results of the last pipe. Call it once - it is not idempotent!
-func (p *Pipeline) Out() <-chan interface{} {
-	p.hasOut = true
-	return p.pipes[len(p.pipes)-1].out
-}
+func (p *Pipeline[I, O]) Close() {
+	if p.closed {
+		return
+	}
 
-// Close closes pipeline input channel, from that moment pipeline processes what is left and releases the resources
-// it must not be used after Close is called
-func (p *Pipeline) Close() {
 	p.closed = true
-	close(p.pipes[0].in)
+
+	close(p.inCh)
 }
 
-func bindChannels(from <-chan interface{}, to chan<- interface{}) {
-	go func(from <-chan interface{}, to chan<- interface{}) {
-		for msg := range from {
-			to <- msg
+func Attach[I, T, O any](left *Pipeline[I, T], right *Pipeline[T, O]) *Pipeline[I, O] {
+	go func() {
+		for v := range left.Out() {
+			right.Push(v)
 		}
 
-		close(to)
-	}(from, to)
+		right.Close()
+	}()
+
+	return &Pipeline[I, O]{
+		inCh:   left.inCh,
+		outCh:  right.outCh,
+		closed: left.closed || right.closed,
+	}
 }

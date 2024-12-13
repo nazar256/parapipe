@@ -3,37 +3,37 @@ package parapipe
 import (
 	"math/rand"
 	"testing"
-	"testing/quick"
 	"time"
 )
 
-func genIntMessages(dst chan<- interface{}, amount int) {
+func genIntMessages(dst chan<- int, amount int) {
 	go func() {
 		for i := 0; i < amount; i++ {
 			dst <- i
 		}
+
 		close(dst)
 	}()
 }
 
 func TestPipeMaintainsMessageOrder(t *testing.T) {
-	pipe := newPipe(func(msg interface{}) interface{} {
-		return msg.(int) + 1
-	}, rand.Intn(4), false)
+	p := newPipe[int, int](rand.Intn(4), func(msg int) (int, bool) {
+		return msg + 1, true
+	})
 
 	msgAmount := 100 + rand.Intn(1000)
 
 	go func() {
 		for input := 0; input < msgAmount; input++ {
-			pipe.in <- input
+			p.in <- input
 		}
 
-		close(pipe.in)
+		close(p.in)
 	}()
 
 	for input := 0; input < msgAmount; input++ {
 		expected := input + 1
-		actual := <-pipe.out
+		actual := <-p.out
 
 		if actual != expected {
 			t.Errorf("order not maintained, expected %d in sequence of %d, got %d", expected, msgAmount, actual)
@@ -45,17 +45,17 @@ func TestPipeMaintainsMessageOrder(t *testing.T) {
 func TestPipeExecutesJobsConcurrently(t *testing.T) {
 	concurrency := 100
 
-	pipe := newPipe(func(msg interface{}) interface{} {
+	p := newPipe[int, int](concurrency, func(msg int) (int, bool) {
 		time.Sleep(time.Duration(concurrency) * time.Millisecond)
-		return msg
-	}, concurrency, false)
+		return msg, true
+	})
 
 	start := time.Now()
 
-	genIntMessages(pipe.in, concurrency)
+	genIntMessages(p.in, concurrency)
 
 	// wait for everything is processed
-	for range pipe.out {
+	for range p.out {
 	}
 
 	duration := time.Since(start)
@@ -68,36 +68,18 @@ func TestPipeExecutesJobsConcurrently(t *testing.T) {
 }
 
 func TestPipeCanSkipErrorProcessing(t *testing.T) {
-	concurrency := rand.Intn(20)
-	pipe := newPipe(func(msg interface{}) interface{} {
-		err := msg.(error)
-		if err != nil {
-			t.Error("error expected to not be passed to worker, but it was")
-		}
-		return msg
-	}, concurrency, false)
+	p := newPipe[int, int](rand.Intn(20), func(msg int) (int, bool) {
+		return msg + 1, false
+	})
 
-	pipe.in <- new(quick.CheckError)
-	close(pipe.in)
-	<-pipe.out
-}
+	go func() {
+		p.in <- 1
+		close(p.in)
+	}()
 
-func TestPipeCanProcessErrors(t *testing.T) {
-	concurrency := rand.Intn(20)
-	errProcessed := false
-	pipe := newPipe(func(msg interface{}) interface{} {
-		_, isErr := msg.(error)
-		if isErr {
-			errProcessed = true
-		}
-		return msg
-	}, concurrency, true)
+	outValue := <-p.out
 
-	pipe.in <- new(quick.CheckError)
-	close(pipe.in)
-	<-pipe.out
-
-	if !errProcessed {
-		t.Error("error expected to be passed to worker, but it was not")
+	if outValue != 0 {
+		t.Error("error processing should skip the job")
 	}
 }

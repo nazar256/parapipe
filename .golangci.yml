@@ -8,8 +8,6 @@ linters-settings:
   funlen:
     lines: 100
     statements: 50
-  gci:
-    local-prefixes: github.com/golangci/golangci-lint
   goconst:
     min-len: 2
     min-occurrences: 2
@@ -38,12 +36,10 @@ linters-settings:
 
 linters:
   enable:
-    - deadcode
     - depguard
     - dogsled
     - dupl
     - errcheck
-    - exportloopref
     - exhaustive
     - funlen
     - gochecknoinits
@@ -52,7 +48,6 @@ linters:
     - gocyclo
     - gofmt
     - goimports
-    - gomnd
     - goprintffuncname
     - gosec
     - gosimple
@@ -64,19 +59,16 @@ linters:
     - nolintlint
     - rowserrcheck
     - staticcheck
-    - structcheck
     - stylecheck
     - typecheck
     - unconvert
     - unparam
     - unused
-    - varcheck
     - whitespace
     - asciicheck
     - gochecknoglobals
     - gocognit
     - godox
-    - goerr113
     - nestif
     - prealloc
     - revive
@@ -91,11 +83,9 @@ linters:
     - predeclared
     - tparallel
   disable:
-    - exhaustivestruct
     - paralleltest
     - bodyclose
     - godot
-    - ifshort
     - noctx
     - sqlclosecheck
     - testpackage
@@ -105,3 +95,12 @@ issues:
     - path: _test\.go
       linters:
         - gosec
+
+    - path: _test\.go$
+      linters:
+        - revive
+      text: "empty-block"
+    - path: _test\.go$
+      linters:
+        - depguard
+      text: "not allowed from list 'Main'"
